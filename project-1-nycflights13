@@ -1,0 +1,127 @@
+# This is my first data analysis -type project, in which I try to apply
+# some skills I have learned in R/RStudio to analyse real-world flight data.
+
+
+# I use the "nycflights13" package associated with "tidyverse", which
+# documents flight data out of New York airports in 2013. For more info
+# on this package, see https://cran.r-project.org/web/packages/nycflights13/nycflights13.pdf
+
+library(tidyverse)
+library(ggthemes)
+library(ggrepel)
+library(hexbin)
+library(nycflights13)
+
+delays_monthly <- flights |>
+  group_by(month) |>
+  summarise(
+    avg_monthly_delay = mean(dep_delay, na.rm = TRUE),
+    total_monthly_delay = sum(dep_delay, na.rm = TRUE)
+  )
+
+peak_monthly_delays <- delays_monthly |>
+  filter(avg_monthly_delay > 15)
+
+delays_monthly |>
+  ggplot(aes(x = month, y = avg_monthly_delay)) +
+    geom_point(size = 1) +
+    labs(
+      x = "Month of the year",
+      y = "Mean flight departure delay (min)",
+      title = "Mean flight departure delays generally peak in the holiday months",
+      subtitle = "Further investigation needed into potential causal relationship",
+      caption = "Data obtained from transtats.bts.gov"
+    ) +
+    geom_text_repel(
+      data = peak_monthly_delays,
+      aes(label = month)
+    ) +
+    geom_point(
+      data = peak_monthly_delays,
+      color = "red",
+      size = 1.5
+    )
+
+ggsave("mean_dep_delay_by_month.png")
+
+delayed_in_air <- flights |>
+  filter(dep_delay <= 15 & arr_delay >= 30)
+
+delayed_in_air |>
+  group_by(dest) |>
+  mutate(
+    air_delay = arr_delay - dep_delay,
+    av_air_delay = mean(air_delay, na.rm = TRUE)
+  ) |>
+  ggplot(aes(x = dest, y = av_air_delay)) +
+    geom_point(size = 0.5) +
+    facet_grid(. ~ origin) +
+    labs(
+      y = "Average air delay (min)",
+      x = "Flight destination",
+      title = "Average air delay with respect to flight destination for substantially air-delayed flights",
+      subtitle = "A flight is substantially air-delayed if departure delay is less than 15 minutes and the flight gets at least 15 minutes further behind in the air",
+      caption = "Data obtained from transtats.bts.gov"
+    )
+
+ggsave("mean_air_delay_by_destination.png")
+
+flights |>
+  filter(-20 < dep_delay & dep_delay < 60 & origin == "JFK") |>
+  ggplot(aes(x = dep_delay, y = after_stat(density))) +
+    geom_freqpoly(aes(color = carrier), binwidth = 1) +
+    labs(
+      x = "Departure delay (min)",
+      y = "Density [standardised count]",
+      title = "JFK flights in general depart before schedule",
+      subtitle = "The greatest risk of departure delay lies with VX",
+      caption = "Data obtained from transtats.bts.gov",
+      color = "Airline carrier"
+    )
+
+ggsave("dep_delay_jfk_stand_freq_pol.png")
+
+flights |>
+  filter(-20 < dep_delay & dep_delay < 20 & origin == "LGA") |>
+  ggplot(aes(x = dep_delay, y = after_stat(density))) +
+  geom_freqpoly(aes(color = carrier), binwidth = 1) +
+  labs(
+    x = "Departure delay (min)",
+    y = "Density [standardised count]",
+    title = "LGA flights in general depart before schedule",
+    subtitle = "OO runs too few flights for useful conclusions",
+    caption = "Data obtained from transtats.bts.gov",
+    color = "Airline carrier"
+  )
+
+ggsave("dep_delay_lga_stand_freq_pol.png")
+
+flights |>
+  filter(-20 < dep_delay & dep_delay < 60 & origin == "JFK") |>
+  ggplot(aes(x = dep_delay, y = after_stat(density))) +
+  geom_freqpoly(aes(color = carrier), binwidth = 1) +
+  labs(
+    x = "Departure delay (min)",
+    y = "Density [standardised count]",
+    title = "JFK flights in general depart before schedule",
+    subtitle = "The greatest risk of departure delay lies with VX",
+    caption = "Data obtained from transtats.bts.gov",
+    color = "Airline carrier"
+  )
+
+ggsave("dep_delay_jfk_stand_freq_pol.png")
+
+flights |>
+  filter(-20 < dep_delay & dep_delay < 20 & origin == "EWR" & carrier != "OO") |>
+  ggplot(aes(x = dep_delay, y = after_stat(density))) +
+  geom_freqpoly(aes(color = carrier), binwidth = 1) +
+  labs(
+    x = "Departure delay (min)",
+    y = "Density [standardised count]",
+    title = "EWR flights in general depart before schedule",
+    subtitle = "OO ran too few flights; its data has been removed",
+    caption = "Data obtained from transtats.bts.gov",
+    color = "Airline carrier"
+  )
+
+ggsave("dep_delay_ewr_stand_freq_pol.png")
